@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Network IDS Dashboard</title>
+  <style>
+    body { font-family: Arial; background: #0d1117; color: white; text-align: center; padding: 40px; }
+    h1 { color: #58a6ff; }
+    input { margin: 5px; padding: 8px; width: 120px; background: #1e1e2e; color: white; border: 1px solid #444; border-radius: 4px; }
+    button { padding: 12px 30px; background: #58a6ff; border: none; color: white; cursor: pointer; font-size: 16px; margin-top: 20px; border-radius: 6px; }
+    button:hover { background: #1f6feb; }
+    .result { font-size: 2em; margin-top: 30px; font-weight: bold; }
+    .grid { display: flex; flex-wrap: wrap; justify-content: center; max-width: 800px; margin: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #1e1e2e; padding: 10px; border: 1px solid #444; }
+    td { padding: 10px; border: 1px solid #333; }
+    .log-section { max-width: 800px; margin: 40px auto; text-align: left; }
+    .log-section h3 { color: #58a6ff; }
+    .badge-normal { color: lime; font-weight: bold; }
+    .badge-attack { color: red; font-weight: bold; }
+    .live-dot { display:inline-block; width:10px; height:10px; background:lime; border-radius:50%; margin-right:8px; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  </style>
+</head>
+<body>
+  <h1>AI Network Intrusion Detection System</h1>
+  <p style="color:#8b949e;">Enter network feature values to classify traffic manually</p>
+
+  <form method="POST" action="/predict">
+    <div class="grid">
+      {% for i in range(41) %}
+        <input type="number" name="f{{ i }}" placeholder="Feature {{ i+1 }}" step="any" value="0">
+      {% endfor %}
+    </div>
+    <br>
+    <button type="submit">Classify Traffic</button>
+  </form>
+
+  {% if prediction %}
+    <div class="result" style="color: {{ color }}">
+      Result: {{ prediction }}
+      {% if color == 'lime' %} --- Normal Traffic
+      {% else %} --- ATTACK DETECTED
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Live Detection Log with auto-refresh -->
+  <div class="log-section">
+    <h3><span class="live-dot"></span>Live Detection Log (auto-refreshes every 3s)</h3>
+    <table id="log-table">
+      <tr>
+        <th>Time</th>
+        <th>Source</th>
+        <th>Attack Type</th>
+        <th>Status</th>
+      </tr>
+      <tbody id="log-body">
+        {% for log in logs|reverse %}
+        <tr>
+          <td>{{ log.time }}</td>
+          <td style="color:#8b949e; font-size:0.85em;">{{ log.source }}</td>
+          <td>{{ log.result }}</td>
+          <td>
+            {% if log.color == 'lime' %}
+              <span class="badge-normal">Normal</span>
+            {% else %}
+              <span class="badge-attack">ATTACK DETECTED</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Auto-refresh log every 3 seconds -->
+  <script>
+    setInterval(() => {
+      fetch('/api/logs')
+        .then(res => res.json())
+        .then(logs => {
+          const tbody = document.getElementById('log-body');
+          tbody.innerHTML = '';
+          [...logs].reverse().forEach(log => {
+            const status = log.color === 'lime'
+              ? '<span class="badge-normal">Normal</span>'
+              : '<span class="badge-attack">ATTACK DETECTED</span>';
+            tbody.innerHTML += `
+              <tr>
+                <td>${log.time}</td>
+                <td style="color:#8b949e; font-size:0.85em;">${log.source}</td>
+                <td>${log.result}</td>
+                <td>${status}</td>
+              </tr>`;
+          });
+        });
+    }, 3000);
+  </script>
+
+</body>
+</html>
